@@ -1,6 +1,6 @@
 /**
- * as simple vertex shader setting the 2D position of a vertex without any transformations and forwarding the color
- * Created by Samuel Gratzl on 08.02.2016.
+ * as simple vertex shader setting the position of a vertex
+ * Original file created by Samuel Gratzl on 08.02.2016.
  */
 
 // the position of the point
@@ -18,12 +18,9 @@ uniform mat4 u_projection;
 void main() {
 
   //TASK 1 and TASK 2-1
-  //translation vector for moving vertices to a different position
-  //vec3 translation = vec3(0,-0.5,0);
-  vec3 translation = vec3(0,0,0);
 
   gl_Position = u_projection * u_modelView
-    * vec4(a_position + translation, 1);
+    * vec4(a_position, 1);
 
   //just copy the input color to the output varying color
   v_color = a_color;
