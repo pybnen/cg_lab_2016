@@ -60,6 +60,11 @@ function createSceneGraph(gl, resources) {
     //TASK 2-4 wrap with material node
     let c3po = new RenderSGNode(resources.model);
 
+    //c3po.ambient = [0.24725, 0.1995, 0.0745, 1];
+    //c3po.diffuse = [0.75164, 0.60648, 0.22648, 1];
+    //c3po.specular = [0.628281, 0.555802, 0.366065, 1];
+    //c3po.shininess = 0.4;
+
     rotateNode = new TransformationSGNode(mat4.create(), [
       new TransformationSGNode(glm.transform({ translate: [0,1, 0], rotateX : 180, scale: 0.8 }),  [
         c3po
@@ -71,6 +76,12 @@ function createSceneGraph(gl, resources) {
   {
     //TASK 2-5 wrap with material node
     let floor = new RenderSGNode(makeRect());
+
+    //dark
+    //floor.ambient = [0, 0, 0, 1];
+    //floor.diffuse = [0.1, 0.1, 0.1, 1];
+    //floor.specular = [0.5, 0.5, 0.5, 1];
+
 
     root.append(new TransformationSGNode(glm.transform({ translate: [0,1,0], rotateX: 90, scale: 2}), [
       floor
