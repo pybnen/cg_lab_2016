@@ -99,7 +99,7 @@ function initInteraction(canvas) {
   });
   canvas.addEventListener('mousemove', function(event) {
     const pos = toPos(event);
-    const delta = { x : mouse.pos.y - pos.y, y: mouse.pos.x - pos.x };
+    const delta = { x : mouse.pos.x - pos.x, y: mouse.pos.y - pos.y };
     //TASK 0-1 add delta mouse to camera.rotation if the left mouse button is pressed
 
     mouse.pos = pos;
