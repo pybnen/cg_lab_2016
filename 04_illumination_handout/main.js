@@ -173,7 +173,8 @@ class MaterialNode extends SGNode {
       shader = context.shader;
 
     //TASK 2-3 set uniforms
-    //hint setting a structure element using the dot notation, e.g. u_material.test
+    //hint setting a structure element using the dot notation, e.g. u_material.ambient
+    //setting a uniform: gl.uniform UNIFORM TYPE (gl.getUniformLocation(shader, UNIFORM NAME), VALUE);
   }
 
   render(context) {
