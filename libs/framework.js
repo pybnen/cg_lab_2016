@@ -217,6 +217,25 @@ var glm = (function () {
     },
     rotateZ: function (degree) {
       return mat4.rotateZ(mat4.create(), identity, deg2rad(degree));
+    },
+    transform: function (transform) {
+      let r = mat4.create();
+      if (transform.translate) {
+        r = mat4.translate(r, r, transform.translate);
+      }
+      if (transform.rotateX) {
+        r = mat4.rotateX(r, r, deg2rad(transform.rotateX));
+      }
+      if (transform.rotateY) {
+        r = mat4.rotateY(r, r, deg2rad(transform.rotateY));
+      }
+      if (transform.rotateZ) {
+        r = mat4.rotateZ(r, r, deg2rad(transform.rotateZ));
+      }
+      if (transform.scale) {
+        r = mat4.scale(r, r, typeof transform.scale === 'number' ?  [transform.scale, transform.scale, transform.scale]: transform.scale);
+      }
+      return r;
     }
   };
 })();
@@ -462,6 +481,50 @@ function parseObjFile(objectData) {
   };
 }
 
+function parseMtlFile(fileContent) {
+  const NEW_MTL_RE = /^newmtl\s/;
+  var NS_RE = /^Ns\s/;
+  var KA_RE = /^Ka\s/;
+  var KD_RE = /^Kd\s/;
+  var KS_RE = /^Ks\s/;
+  var KS_RE = /^Ke\s/;
+  var MAP_KD_RE = /^map_Kd\s/;
+  var WHITESPACE_RE = /\s+/;
+
+  const materials = { };
+  var material = null;
+
+  fileContent.split('\n').forEach(function(line) {
+    line = line.trim();
+    const elems = line.split(WHITESPACE_RE);
+    elems.shift(); //skip marker
+    if (NEW_MTL_RE.test(line)) {
+      material = {
+        ambient: [0.2, 0.2, 0.2, 1.0],
+        diffuse: [0.8, 0.8, 0.8, 1.0],
+        specular: [0, 0, 0, 1],
+        emission: [0, 0, 0, 1],
+        shininess: 0.0,
+        texture: null
+      };
+      materials[elsm[0]] = material;
+    } else if (NS_RE.test(line)) {
+      material.shininess = parseFloat(elems[0]);
+    } else if (KA_RE.test(line)) {
+      material.ambient = [ parseFloat(elems[0]), parseFloat(elems[1]), parseFloat(elems[2]), 1];
+    } else if (KD_RE.test(line)) {
+      material.diffuse = [ parseFloat(elems[0]), parseFloat(elems[1]), parseFloat(elems[2]), 1];
+    } else if (KS_RE.test(line)) {
+      material.specular = [ parseFloat(elems[0]), parseFloat(elems[1]), parseFloat(elems[2]), 1];
+    } else if (KE_RE.test(line)) {
+      material.emission = [ parseFloat(elems[0]), parseFloat(elems[1]), parseFloat(elems[2]), 1];
+    } else if (MAP_KD_RE.test(line)) {
+      material.texture = elems[0];
+    }
+  });
+  return materials;
+}
+
 /**
  * returns the model of a new rect of the given width and height
  * @param width
@@ -494,9 +557,6 @@ class SGNode {
   constructor(children) {
     //this.children = children || []; //only works when passing an array of children otherwise error in forEach
     this.children = typeof children !== 'undefined' ? [].concat(children) : []; //allows to add either a single child or multiple children
-
-    //set of uniforms to set
-    this.uniforms = {}
   }
 
   /**
@@ -531,32 +591,11 @@ class SGNode {
     return i >= 0;
   };
 
-  setUniforms(context) {
-    const gl = context.gl,
-      shader = context.shader;
-    const that = this;
-    Object.keys(this.uniforms).forEach(function(key) {
-      const value = that.uniforms[key];
-      const loc = gl.getUniformLocation(shader, key);
-      if (typeof value === 'number') {
-        gl.uniform1f(loc, value);
-      } else if (typeof value === 'boolean') {
-        gl.uniform1i(loc, value ? 1 : 0);
-      } else if (Array.isArray(value)) {
-        const l = value.length;
-        const f = gl['uniform'+l+'f']
-        f.apply(gl, [loc].concat(value));
-      }
-    });
-  }
   /**
    * render method to render this scengraph
    * @param context
    */
   render(context) {
-    if (context.shader) {
-      this.setUniforms(context);
-    }
     //render all children
     this.children.forEach(function (c) {
       return c.render(context);
@@ -610,7 +649,7 @@ class ShaderSGNode extends SGNode {
 
   render(context) {
     //backup prevoius one
-    var bak = context.shader;
+    var backup = context.shader;
     //set current shader
     context.shader = this.program;
     //activate the shader
@@ -618,9 +657,97 @@ class ShaderSGNode extends SGNode {
     //render children
     super.render(context);
     //restore backup
-    context.shader = bak;
+    context.shader = backup;
+    if (backup) {
+      context.gl.useProgram(backup);
+    }
   }
 };
+
+/**
+ * a utility node for setting a uniform in a shader
+ */
+class SetUniformSGNode extends SGNode {
+  constructor(uniform, value, children) {
+    super(typeof uniform === 'string' ? children : uniform);
+    this.uniforms = {};
+    if (typeof uniform === 'string') {
+      this.uniforms[uniform] = value;
+    }
+  }
+
+  setUniforms(context) {
+    const gl = context.gl,
+      shader = context.shader;
+    const that = this;
+    Object.keys(this.uniforms).forEach(function(key) {
+      const value = that.uniforms[key];
+      const loc = gl.getUniformLocation(shader, key);
+      if (typeof value === 'number') {
+        gl.uniform1f(loc, value);
+      } else if (typeof value === 'boolean') {
+        gl.uniform1i(loc, value ? 1 : 0);
+      } else if (Array.isArray(value)) {
+        const l = value.length;
+        const f = gl['uniform'+l+'f']
+        f.apply(gl, [loc].concat(value));
+      }
+    });
+  }
+
+  render(context) {
+    if (context.shader) {
+      this.setUniforms(context);
+    }
+    //render children
+    super.render(context);
+  }
+
+}
+
+class AdvancedTextureSGNode extends SGNode {
+  constructor(image, children ) {
+      super(children);
+      this.image = image;
+      this.textureUnit = 0;
+      this.uniform = 'u_tex';
+      this.textureId = -1;
+  }
+
+  init(gl) {
+    this.textureId = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, this.textureId);
+
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, this.magFilter || gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, this.minFilter || gl.LINEAR);
+
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, this.wrapS || gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, this.wrapT || gl.REPEAT);
+
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.image);
+
+    gl.bindTexture(gl.TEXTURE_2D, null);
+  }
+
+  render(context) {
+    if (this.textureId < 0) {
+      this.init(context.gl);
+    }
+    //set additional shader parameters
+    gl.uniform1i(gl.getUniformLocation(context.shader, this.uniform), this.textureUnit);
+
+    //activate and bind texture
+    gl.activeTexture(gl.TEXTURE0 + this.textureunit);
+    gl.bindTexture(gl.TEXTURE_2D, this.textureId);
+
+    //render children
+    super.render(context);
+
+    //clean up
+    gl.activeTexture(gl.TEXTURE0 + this.textureunit);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+  }
+}
 
 /**
  * a render node renders a specific model
