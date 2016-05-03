@@ -30,7 +30,7 @@ void main() {
   v_eyeVec = -eyePosition.xyz;
 	v_lightVec = u_lightPos - eyePosition.xyz;
 
-	//TASK 2.2: calculate vertex position in light clip space coordinates using u_eyeToLightMatrix (assign result to v_shadowProjTexCoord)
+	//TASK 2.2: calculate vertex position in light clip space coordinates using u_eyeToLightMatrix (assign result to v_shadowMapTexCoord)
 	v_shadowMapTexCoord = vec4(0,0,0,0);
 
 	//pass on texture coordinates
