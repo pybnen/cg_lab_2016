@@ -854,7 +854,7 @@ function modelRenderer(model) {
       gl.drawElements(gl.TRIANGLES, numItems, gl.UNSIGNED_SHORT, 0);
     }
     else {
-      gl.drawArrays(gl.TRIANGLES, numItems, 0);
+      gl.drawArrays(gl.TRIANGLES, 0, numItems);
     }
   };
 }
