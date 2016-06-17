@@ -48,22 +48,45 @@ function createSceneGraph(gl, resources) {
 
   {
     //TASK 3-6 create white light node at [0, -2, 2]
+    let light = new LightNode();
+    light.ambient = [0, 0, 0, 1];
+    light.diffuse = [1, 1, 1, 1];
+    light.specular = [1, 1, 1, 1];
+    light.position = [0, -2, 2];
+    light.append(createLightSphere());
     //TASK 4-1 animated light using rotateLight transformation node
+    rotateLight = new TransformationSGNode(mat4.create(), [
+      light
+    ]);
+    root.append(rotateLight);
   }
 
 
   {
     //TASK 5-1 create red light node at [2, 0.2, 0]
+    let redLight = new LightNode();
+    redLight.uniform = 'u_light2';
+    redLight.diffuse = [1, 0, 0, 1];
+    redLight.specular = [1, 0, 0, 1];
+    redLight.position = [2, 0.2, 0];
+    redLight.append(createLightSphere());
+
+    rotateLight2 = new TransformationSGNode(mat4.create(), [
+      redLight
+    ]);
+    root.append(rotateLight2);
   }
 
   {
     //TASK 2-4 wrap with material node
-    let c3po = new RenderSGNode(resources.model);
-
-    //c3po.ambient = [0.24725, 0.1995, 0.0745, 1];
-    //c3po.diffuse = [0.75164, 0.60648, 0.22648, 1];
-    //c3po.specular = [0.628281, 0.555802, 0.366065, 1];
-    //c3po.shininess = 0.4;
+    let c3po = new MaterialNode([
+      new RenderSGNode(resources.model)
+    ]);
+    //gold
+    c3po.ambient = [0.24725, 0.1995, 0.0745, 1];
+    c3po.diffuse = [0.75164, 0.60648, 0.22648, 1];
+    c3po.specular = [0.628281, 0.555802, 0.366065, 1];
+    c3po.shininess = 0.4;
 
     rotateNode = new TransformationSGNode(mat4.create(), [
       new TransformationSGNode(glm.transform({ translate: [0,1, 0], rotateX : 180, scale: 0.8 }),  [
@@ -75,12 +98,13 @@ function createSceneGraph(gl, resources) {
 
   {
     //TASK 2-5 wrap with material node
-    let floor = new RenderSGNode(makeRect());
-
+    let floor = new MaterialNode([
+      new RenderSGNode(makeRect())
+    ]);
     //dark
-    //floor.ambient = [0, 0, 0, 1];
-    //floor.diffuse = [0.1, 0.1, 0.1, 1];
-    //floor.specular = [0.5, 0.5, 0.5, 1];
+    floor.ambient = [0, 0, 0, 1];
+    floor.diffuse = [0.1, 0.1, 0.1, 1];
+    floor.specular = [0.5, 0.5, 0.5, 1];
 
 
     root.append(new TransformationSGNode(glm.transform({ translate: [0,1,0], rotateX: 90, scale: 2}), [
@@ -112,6 +136,10 @@ function initInteraction(canvas) {
     const pos = toPos(event);
     const delta = { x : mouse.pos.x - pos.x, y: mouse.pos.y - pos.y };
     //TASK 0-1 add delta mouse to camera.rotation if the left mouse button is pressed
+    if (mouse.leftButtonDown) {
+      camera.rotation.x += delta.x;
+      camera.rotation.y += delta.y;
+    }
 
     mouse.pos = pos;
   });
@@ -149,14 +177,16 @@ function render(timeInMilliseconds) {
 
   //TASK 0-2 rotate whole scene according to the mouse rotation stored in
   //camera.rotation.x and camera.rotation.y
-  context.sceneMatrix = mat4.create();
+  context.sceneMatrix = mat4.multiply(mat4.create(),
+    glm.rotateY(camera.rotation.x),
+    glm.rotateX(camera.rotation.y));
 
   rotateNode.matrix = glm.rotateY(timeInMilliseconds*-0.01);
 
   //TASK 4-2 enable light rotation
-  //rotateLight.matrix = glm.rotateY(timeInMilliseconds*0.05);
+  rotateLight.matrix = glm.rotateY(timeInMilliseconds*0.05);
   //TASK 5-2 enable light rotation
-  //rotateLight2.matrix = glm.rotateY(-timeInMilliseconds*0.1);
+  rotateLight2.matrix = glm.rotateY(-timeInMilliseconds*0.1);
 
   root.render(context);
 
@@ -186,6 +216,11 @@ class MaterialNode extends SGNode {
     //TASK 2-3 set uniforms
     //hint setting a structure element using the dot notation, e.g. u_material.ambient
     //setting a uniform: gl.uniform UNIFORM TYPE (gl.getUniformLocation(shader, UNIFORM NAME), VALUE);
+    gl.uniform4fv(gl.getUniformLocation(shader, this.uniform+'.ambient'), this.ambient);
+    gl.uniform4fv(gl.getUniformLocation(shader, this.uniform+'.diffuse'), this.diffuse);
+    gl.uniform4fv(gl.getUniformLocation(shader, this.uniform+'.specular'), this.specular);
+    gl.uniform4fv(gl.getUniformLocation(shader, this.uniform+'.emission'), this.emission);
+    gl.uniform1f(gl.getUniformLocation(shader, this.uniform+'.shininess'), this.shininess);
   }
 
   render(context) {
@@ -228,7 +263,7 @@ class LightNode extends TransformationSGNode {
       position = this.computeLightPosition(context);
 
     //TASK 3-5 set uniforms
-	gl.uniform4fv(gl.getUniformLocation(shader, this.uniform+'.ambient'), this.ambient);
+  	gl.uniform4fv(gl.getUniformLocation(shader, this.uniform+'.ambient'), this.ambient);
     gl.uniform4fv(gl.getUniformLocation(shader, this.uniform+'.diffuse'), this.diffuse);
     gl.uniform4fv(gl.getUniformLocation(shader, this.uniform+'.specular'), this.specular);
 
